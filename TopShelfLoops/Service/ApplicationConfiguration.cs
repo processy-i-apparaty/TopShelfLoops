@@ -8,8 +8,9 @@ namespace TopShelfLoops.Service
     {
         public ApplicationConfiguration()
         {
-            TimeToWait = TimeSpan.FromSeconds(1.5);
             ParallelCount = 5;
+
+            TimeToWait = TimeSpan.FromSeconds(8.5);
             CancelAllOnFirstFault = true;
             LogRollingInterval = RollingInterval.Day;
             LogWarn = true;

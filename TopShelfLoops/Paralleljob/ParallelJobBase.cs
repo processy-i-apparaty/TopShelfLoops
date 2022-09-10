@@ -2,7 +2,7 @@
 using System.Threading;
 using Serilog;
 
-namespace TopShelfLoops.Paralleljob
+namespace TopShelfLoops.ParallelJob
 {
     internal abstract class ParallelJobBase<TIn, TOut>
     {

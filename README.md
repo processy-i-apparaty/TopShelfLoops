@@ -1,143 +1,151 @@
-# Welcome to StackEdit!
+# TopShelf Loops
 
-Hi! I'm your first Markdown file in **StackEdit**. If you want to learn about StackEdit, you can read me. If you want to play with Markdown, you can edit me. Once you have finished with me, you can create new files by opening the **file explorer** on the left corner of the navigation bar.
+Шаблон проекта для разработки Windows-сервисов.
+Консольное приложение .NET Framework 4.6.2
 
+## Цель
 
-# Files
+Создавать сервисы, работающие по сценарию: работать в цикле вплоть до остановки, выполнять повторяющуюся задачу, ожидать заданный интервал времени. Также задача может быть разделена на экземпляры подзадач, выполняющихся параллельно. При параллельной работе, в случае возникновения исключения внутри одной из подзадач, должен присутствовать выбор: останавливать все подзадачи либо продолжать их выполнение. Каждая подзадача получает объект с входными данными. По окончании выполнения каждой подзадачи возвращать объект-результат выполнения, включающий в себя объект выходных данных. Должно быть настраиваемое логирование в файлы и другие источники. При остановки сервиса, оный обязан среагировать на запрос в минимальный срок и завершить работу.
 
-StackEdit stores your files in your browser, which means all your files are automatically saved locally and are accessible **offline!**
+### Библиотеки
 
-## Create files and folders
+- [Topshelf v4.3.0](https://topshelf.readthedocs.io/en/latest/)
+- [Topshelf.Serilog v4.3.0](https://www.nuget.org/packages/Topshelf.Serilog/)
+- [Serilog v2.11.0](https://serilog.net/)
+- [Serilog.Sinks.Console v4.1.0](https://github.com/serilog/serilog-sinks-console)
+- [Serilog.Sinks.File v5.0.0](https://github.com/serilog/serilog-sinks-file)
+- [Serilog.Sinks.Notepad v2.1.0](https://github.com/serilog-contrib/serilog-sinks-notepad)
+- [Westwind.Utilities v3.1.14](https://github.com/RickStrahl/Westwind.Utilities)
 
-The file explorer is accessible using the button in left corner of the navigation bar. You can create a new file by clicking the **New file** button in the file explorer. You can also create folders by clicking the **New folder** button.
+# Реализация
 
-## Switch to another file
+Для удобства разработки и отладки сервиса используется библиотека **TopShelf**. Создан набор шаблонов и абстракций для реализации кастомной логики.
 
-All your files and folders are presented as a tree in the file explorer. You can switch from one to another by clicking a file in the tree.
+### Класс TopShelfLoops.Service.CustomService
 
-## Rename a file
+При старте сервиса выполняется метод **Start**. В качестве параметров метод принимает интерфейс кастомной логики и параметры приложения. Внутри метода создается токен отмены, обертка выполнения кастомной логики. Создается Task который запускает логику. 
 
-You can rename the current file by clicking the file name in the navigation bar or by clicking the **Rename** button in the file explorer.
+    public void Start(ICustomLogic customLogic, ApplicationConfiguration configuration)
+    {
+        var logicWrapper = new CustomLogicWrapper(customLogic, configuration);
+        _cancellationTokenSource = new CancellationTokenSource();
+        _customTask = new Task(() => logicWrapper.Run(_cancellationTokenSource.Token));
+        _log.Info("Starting custom logic");
+        _customTask.Start();
+    }
 
-## Delete a file
-
-You can delete the current file by clicking the **Remove** button in the file explorer. The file will be moved into the **Trash** folder and automatically deleted after 7 days of inactivity.
-
-## Export a file
-
-You can export the current file by clicking **Export to disk** in the menu. You can choose to export the file as plain Markdown, as HTML using a Handlebars template or as a PDF.
-
-
-# Synchronization
-
-Synchronization is one of the biggest features of StackEdit. It enables you to synchronize any file in your workspace with other files stored in your **Google Drive**, your **Dropbox** and your **GitHub** accounts. This allows you to keep writing on other devices, collaborate with people you share the file with, integrate easily into your workflow... The synchronization mechanism takes place every minute in the background, downloading, merging, and uploading file modifications.
-
-There are two types of synchronization and they can complement each other:
-
-- The workspace synchronization will sync all your files, folders and settings automatically. This will allow you to fetch your workspace on any other device.
-	> To start syncing your workspace, just sign in with Google in the menu.
-
-- The file synchronization will keep one file of the workspace synced with one or multiple files in **Google Drive**, **Dropbox** or **GitHub**.
-	> Before starting to sync files, you must link an account in the **Synchronize** sub-menu.
-
-## Open a file
-
-You can open a file from **Google Drive**, **Dropbox** or **GitHub** by opening the **Synchronize** sub-menu and clicking **Open from**. Once opened in the workspace, any modification in the file will be automatically synced.
-
-## Save a file
-
-You can save any file of the workspace to **Google Drive**, **Dropbox** or **GitHub** by opening the **Synchronize** sub-menu and clicking **Save on**. Even if a file in the workspace is already synced, you can save it to another location. StackEdit can sync one file with multiple locations and accounts.
-
-## Synchronize a file
-
-Once your file is linked to a synchronized location, StackEdit will periodically synchronize it by downloading/uploading any modification. A merge will be performed if necessary and conflicts will be resolved.
-
-If you just have modified your file and you want to force syncing, click the **Synchronize now** button in the navigation bar.
-
-> **Note:** The **Synchronize now** button is disabled if you have no file to synchronize.
-
-## Manage file synchronization
-
-Since one file can be synced with multiple locations, you can list and manage synchronized locations by clicking **File synchronization** in the **Synchronize** sub-menu. This allows you to list and remove synchronized locations that are linked to your file.
+При остановке сервиса выполняется метод **Stop**. Метод запрашивает остановку при помощи токена отмены и ожидает завершение выполнения задачи.
 
 
-# Publication
+    public void Stop()
+    {
+        _log.Warn("Stopping service");
+        _cancellationTokenSource.Cancel();
+        _customTask.Wait();
+        _cancellationTokenSource.Dispose();
+        _log.Info("Service stopped");
+    }
 
-Publishing in StackEdit makes it simple for you to publish online your files. Once you're happy with a file, you can publish it to different hosting platforms like **Blogger**, **Dropbox**, **Gist**, **GitHub**, **Google Drive**, **WordPress** and **Zendesk**. With [Handlebars templates](http://handlebarsjs.com/), you have full control over what you export.
+Также класс слдержит статический метод **RunService**, который конфигурирует и запускает сервис. Метод получает названия и описание сервиса, кастомную логику и конфигурацию. Данный метод вызывается из метода **Main** класса **Program**.
 
-> Before starting to publish, you must link an account in the **Publish** sub-menu.
+    public static TopshelfExitCode RunService(string serviceName, string displayName, string description, ICustomLogic customLogic, ApplicationConfiguration configuration){...}
 
-## Publish a File
+### Метод TopShelfLoops.Program.Main
 
-You can publish your file by opening the **Publish** sub-menu and by clicking **Publish to**. For some locations, you can choose between the following formats:
+Создается экземпляр кастомной логики, реализующий интерфейс **ICustomLogic**.
 
-- Markdown: publish the Markdown text on a website that can interpret it (**GitHub** for instance),
-- HTML: publish the file converted to HTML via a Handlebars template (on a blog for example).
+С помощью библиотеки **Westwind.Utilities** инициализируется конфигурация приложения. Если параметры конфигурации присутствуют в файле конфигурации, то они берутся оттуда, иначе инициализируются параметры по-умолчанию. Отстутствующие параметры автоматически записываются в файл конфигурации.
 
-## Update a publication
+Запускается сервис и блокирует основной поток до своего завершения.
 
-After publishing, StackEdit keeps your file linked to that publication which makes it easy for you to re-publish it. Once you have modified your file and you want to update your publication, click on the **Publish now** button in the navigation bar.
+    internal class Program
+    {
+        private static void Main(string[] args)
+        {
+            var customLogic = new CustomLogicSample();
 
-> **Note:** The **Publish now** button is disabled if your file has not been published yet.
+            var configuration = new ApplicationConfiguration();
+            configuration.Initialize();
+            configuration.Write();
 
-## Manage file publication
+            TopshelfExitCode rc = CustomService.RunService(
+                "CustomService69",
+                "CustomService69",
+                "CustomService69",
+                customLogic, configuration);
 
-Since one file can be published to multiple locations, you can list and manage publish locations by clicking **File publication** in the **Publish** sub-menu. This allows you to list and remove publication locations that are linked to your file.
+            var exitCode = (int)Convert.ChangeType(rc, rc.GetTypeCode());
+            Environment.ExitCode = exitCode;
+        }
+    }
 
+### Интерфейс TopShelfLoops.Service.ICustomLogic
 
-# Markdown extensions
+Свойство **Name** хранит название, которое используется при создании Log-файлов. если свойство не инициализировано, то файлы будут иметь название по-умолчанию.
 
-StackEdit extends the standard Markdown syntax by adding extra **Markdown extensions**, providing you with some nice features.
+Метод **GetCustomAction** возвращает делегат, который будет вызываться в основном цикле сервиса. Входящиме параметры делегируемого метода: конфигурация приложения и токен отмены.
 
-> **ProTip:** You can disable any **Markdown extension** in the **File properties** dialog.
-
-
-## SmartyPants
-
-SmartyPants converts ASCII punctuation characters into "smart" typographic punctuation HTML entities. For example:
-
-|                |ASCII                          |HTML                         |
-|----------------|-------------------------------|-----------------------------|
-|Single backticks|`'Isn't this fun?'`            |'Isn't this fun?'            |
-|Quotes          |`"Isn't this fun?"`            |"Isn't this fun?"            |
-|Dashes          |`-- is en-dash, --- is em-dash`|-- is en-dash, --- is em-dash|
-
-
-## KaTeX
-
-You can render LaTeX mathematical expressions using [KaTeX](https://khan.github.io/KaTeX/):
-
-The *Gamma function* satisfying $\Gamma(n) = (n-1)!\quad\forall n\in\mathbb N$ is via the Euler integral
-
-$$
-\Gamma(z) = \int_0^\infty t^{z-1}e^{-t}dt\,.
-$$
-
-> You can find more information about **LaTeX** mathematical expressions [here](http://meta.math.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference).
+    internal interface ICustomLogic
+    {
+        string Name { get; }
+        Action<ApplicationConfiguration, CancellationToken> GetCustomAction();
+    }
 
 
-## UML diagrams
+### Класс TopShelfLoops.Service.CustomLogicWrapper
 
-You can render UML diagrams using [Mermaid](https://mermaidjs.github.io/). For example, this will produce a sequence diagram:
+Является оберткой для логики сервиса работает в соответствие с требованиями: получает делегат на метод кастомной логики, выполняет его и ожидает заданный в параметрах интервал времени. При запросе отмены через токен, производится выход из цикла. Для ожидания используется **ServiceHelper.Wait**. Через короткие промежутки времени он проверяет время ожидания и не произошел ли запрос отмены. Класс **TopShelfLoops.Service.ServiceHelper** также содержит другие аналогичные методы, которые, например, бросают исключение или проверяют несколько токенов отмены.
 
-```mermaid
-sequenceDiagram
-Alice ->> Bob: Hello Bob, how are you?
-Bob-->>John: How about you John?
-Bob--x Alice: I am good thanks!
-Bob-x John: I am good thanks!
-Note right of John: Bob thinks a long<br/>long time, so long<br/>that the text does<br/>not fit on a row.
 
-Bob-->Alice: Checking with John...
-Alice->John: Yes... John, how are you?
-```
+    internal class CustomLogicWrapper
+    {
+        private readonly ApplicationConfiguration _configuration;
+        private readonly Action<ApplicationConfiguration, CancellationToken> _customAction;
 
-And this will produce a flow chart:
+        public CustomLogicWrapper(ICustomLogic customLogic, ApplicationConfiguration configuration)
+        {
+            _configuration = configuration;
+            _customAction = customLogic.GetCustomAction();
+        }
 
-```mermaid
-graph LR
-A[Square Rect] -- Link text --> B((Circle))
-A --> C(Round Rect)
-B --> D{Rhombus}
-C --> D
-```
+        public void Run(CancellationToken cancellationToken)
+        {
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                try
+                {
+                    _customAction.Invoke(_configuration, cancellationToken);
+                    ServiceHelper.Wait(_configuration.TimeToWait, cancellationToken);
+                }
+                catch (Exception e)
+                {
+                    Log.Logger.Error("{0}; exception; {1}",
+                        nameof(CustomLogicWrapper), e.ToString());
+                }
+            }
+        }
+    }
+
+### Абстрактный класс **TopShelfLoops.ParallelJob.ParallelJobBase&lt;TIn, TOut&gt;**
+
+Данный класс осуществляет сценарий параллельного выполнения однотипных подзадач. Присутствует два generic-параметра: входящий(TIn) и исходящий(TOut) объекты. Класс получает через конструктор ID для идентификации подзадачи в лог-отчете и Func-делегат на метод, который будет выполнен параллельно. Данный метод в качестве входящих параметров принимает generic-объект(TIn), локальный токен отмены(используется для отмены подзадач) и глобальный токен отмены(для остановки сервиса). Выполнение инициируется методом **RunJob**, который получает вышеописанные параметры. Метод возвращает объект-результат выполнения **ParallelResult&lt;TOut&gt;** Чтобы воспользоваться логикой данного класса, нужно написать свою реализацию с конкретными типами входящего и исходящего параметров. Если входящих или исходящих параметров будет больше чем один, рекомендуется использовать объекты, которые будут содержать в себе данные параметры.
+
+Пример реализации. Входящий параметр типа int, исходящий типа string
+
+    internal class SampleParallelJob : ParallelJobBase<int, string>
+    {
+        public SampleParallelJob(ulong id, Func<int, CancellationToken, CancellationToken, string> job) : base(id, job)
+        {
+        }
+    }
+
+### Класс TopShelfLoops.ParallelJob.ParallelWrapper&lt;TIn, TOut&gt;
+
+Данный класс реализует механизм параллельного выполнения подзадач. В конструктор получает коллекцию объектов **ParallelJobBase&lt;TIn, TOut&gt;**, коллекцию входящих параметров(размеры коллекций должны быть идентичны иначе будет брошено исключение), глобальный токен отмены(сигнал на завершение работы сервиса) и флаг отмены всех подзадач при исключении хотя бы в одной из них.
+
+Запуск подзадач инициируется методом **Start**. По завершению всех подзадач метод возвращает коллекцию объектов-результатов **IEnumerable<ParallelResult&lt;TOut&gt;&gt;**
+
+
+### Класс TopShelfLoops.Logic.CustomLogicSample
+
+Содержит пример работы кастомной логики. Использует **ParallelWrapper** для запуска параллельных подзадач. Подзадач создается столько сколько потоков указано в конфигурацции. Каждая подзадача принимает int и возвращает string. Каждая подзадача ожидает случайный интервал времени(0-10 сек) и с вероятностью 1 из 10 бросает исключение. Если исключение брошено, то (в зависимости от параметра **CancelAllOnFirstFault** из конфигурации) обертка может отменить все подзадачи.

@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using TopShelfLoops.Paralleljob;
+using TopShelfLoops.ParallelJob;
 
 namespace TopShelfLoops.Logic
 {

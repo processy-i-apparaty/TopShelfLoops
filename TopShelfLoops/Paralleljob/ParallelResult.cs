@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace TopShelfLoops.Paralleljob
+namespace TopShelfLoops.ParallelJob
 {
     internal class ParallelResult<T>
     {

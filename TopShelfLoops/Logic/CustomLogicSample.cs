@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Threading;
 using Serilog;
-using TopShelfLoops.Paralleljob;
+using TopShelfLoops.ParallelJob;
 using TopShelfLoops.Service;
 
 namespace TopShelfLoops.Logic

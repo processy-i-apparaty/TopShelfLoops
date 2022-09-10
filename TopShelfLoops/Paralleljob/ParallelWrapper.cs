@@ -4,7 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Serilog;
 
-namespace TopShelfLoops.Paralleljob
+namespace TopShelfLoops.ParallelJob
 {
     internal class ParallelWrapper<TIn, TOut>
     {
